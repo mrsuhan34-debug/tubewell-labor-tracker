@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b5cab">
+<title>টিউবওয়েল হাজিরি</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="login" class="login hidden">
+  <div class="login-box">
+    <h1>🚰 টিউবওয়েল হাজিরি</h1>
+    <p>পিন দিন</p>
+    <input id="pin" type="password" inputmode="numeric" placeholder="••••" autocomplete="off">
+    <button class="btn primary" id="pinBtn">ঢুকুন</button>
+    <div id="pinErr" class="err"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="title">🚰 হাজিরি</div>
+    <button class="link" id="logout">বের হন</button>
+  </header>
+  <main id="view"></main>
+  <nav id="tabs"></nav>
+</div>
+
+<div id="modal" class="modal hidden"></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
