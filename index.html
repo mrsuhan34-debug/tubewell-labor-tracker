@@ -3,26 +3,39 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b5cab">
+<meta name="theme-color" content="#12323d">
 <title>টিউবওয়েল হাজিরি</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div id="login" class="login hidden">
+  <div class="login-hero" id="loginHero"></div>
   <div class="login-box">
-    <h1>🚰 টিউবওয়েল হাজিরি</h1>
-    <p>পিন দিন</p>
-    <input id="pin" type="password" inputmode="numeric" placeholder="••••" autocomplete="off">
-    <button class="btn primary" id="pinBtn">ঢুকুন</button>
+    <div class="kicker">দৈনিক হাজিরি খাতা</div>
+    <h1 class="brand">টিউবওয়েল হাজিরি</h1>
+    <p class="sub">কল বসানো ও বোরিং</p>
+    <input id="pin" type="password" inputmode="numeric" placeholder="পিন দিন" autocomplete="off">
+    <button class="btn primary big" id="pinBtn">ঢুকুন</button>
     <div id="pinErr" class="err"></div>
   </div>
 </div>
 
 <div id="app" class="hidden">
-  <header>
-    <div class="title">🚰 হাজিরি</div>
+  <header class="bar">
+    <div><span class="brand">টিউবওয়েল হাজিরি</span><span class="tag" id="roleTag"></span></div>
     <button class="link" id="logout">বের হন</button>
   </header>
+  <section class="hero" id="appHero">
+    <div class="hero-text">
+      <div class="kicker">দৈনিক হাজিরি খাতা</div>
+      <h1>কল বসানো ও বোরিং</h1>
+      <p>সবার হিসাব, এক জায়গায়</p>
+    </div>
+  </section>
   <main id="view"></main>
   <nav id="tabs"></nav>
 </div>
@@ -30,10 +43,12 @@
 <div id="modal" class="modal hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="db.js"></script>
-<script src="app.js"></script>
+<script defer src="three.min.js"></script>
+<script defer src="scene3d.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script defer src="firebase-config.js"></script>
+<script defer src="db.js"></script>
+<script defer src="app.js"></script>
 </body>
 </html>
