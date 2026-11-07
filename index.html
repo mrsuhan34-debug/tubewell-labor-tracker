@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Serif+Bengali:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -21,6 +21,8 @@
     <input id="pin" type="password" inputmode="numeric" placeholder="পিন দিন" autocomplete="off">
     <button class="btn primary big" id="pinBtn">ঢুকুন</button>
     <div id="pinErr" class="err"></div>
+    <div id="loginWarn"></div>
+    <div class="ver" id="verL"></div>
   </div>
 </div>
 
@@ -43,12 +45,12 @@
 <div id="modal" class="modal hidden"></div>
 <div id="toast" class="toast hidden"></div>
 
-<script defer src="three.min.js"></script>
-<script defer src="scene3d.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script defer src="scene3d.js?v=5"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script defer src="firebase-config.js"></script>
-<script defer src="db.js"></script>
-<script defer src="app.js"></script>
+<script defer src="firebase-config.js?v=5"></script>
+<script defer src="db.js?v=5"></script>
+<script defer src="app.js?v=5"></script>
 </body>
 </html>
