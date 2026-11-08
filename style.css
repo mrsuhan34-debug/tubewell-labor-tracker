@@ -148,3 +148,7 @@ small{font-size:12px}
 .rec{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--red)}
 .rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
+/* দাম ও পাওয়া টাকা */
+.money{margin:8px 0;padding:10px 12px;background:#fffdf7;border:1px solid var(--brass);border-left:4px solid var(--brass);border-radius:10px}
+.m-r{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0;font-size:15px}
+.m-r b{font-size:16px}
