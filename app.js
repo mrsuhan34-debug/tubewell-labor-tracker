@@ -1,4 +1,4 @@
-const APP_VERSION = 6;
+const APP_VERSION = 7;
 const NEED = { db: 5, scene: 5 }; // db.js ও scene3d.js-এর সংস্করণ
 const $ = s => document.querySelector(s);
 const bn = n => String(n).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
@@ -12,13 +12,6 @@ const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number); const t 
 const num = v => Number(v) || 0;
 const sumBy = (arr, f) => (arr || []).reduce((s, x) => s + num(f(x)), 0);
 const LABEL = { half: 'হাফ ডে', full: 'ফুল ডে', double: 'ডাবল' };
-const CATS = [
-  { k: 'mal', l: 'মালামাল', i: '🧱' },
-  { k: 'mistri', l: 'মিস্ত্রি', i: '🔧' },
-  { k: 'gari', l: 'গাড়ি / যাতায়াত', i: '🚚' },
-  { k: 'other', l: 'অন্যান্য', i: '📝' }
-];
-const catOf = k => CATS.find(c => c.k === k) || CATS[3];
 const ss = {
   get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
   set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} },
@@ -36,7 +29,6 @@ const workName = w => { const t = (w.text || '').split('\n')[0].trim(); return t
 const thumb = w => w.photo ? `<img class="thumb" src="${w.photo}">` : `<div class="thumb ph">🛠</div>`;
 const av = (k, cls) => k.photo ? `<img class="av ${cls || ''}" src="${k.photo}">` : `<div class="av ph ${cls || ''}">👷</div>`;
 const dayOpen = {}; // 'কাজ_দিন' -> খোলা/বন্ধ (ডিফল্ট: শেষ দিন খোলা)
-const accOpen = {}; // কাজের হিসাব প্যানেল খোলা/বন্ধ
 
 let role = ss.get('role');
 let tab = 'hajiri';
@@ -143,7 +135,7 @@ function viewHajiri() {
   const works = Object.values(DB.data.works).filter(w => {
     const ds = workDates(w);
     return ds.includes(date) || addDays(ds[ds.length - 1], 1) === date;
-  }).sort((a, b) => a.created - b.created);
+  }).sort((a, b) => b.created - a.created); // নতুন কাজ আগে
   let h = `<div class="card"><label style="margin-top:0">তারিখ</label><input type="date" id="dateSel" value="${date}">
     <button class="btn primary big" style="margin-top:12px" data-act="addWork">➕ নতুন কাজ যোগ করুন</button></div>`;
   if (!works.length) h += `<div class="empty">${fmtDate(date)} তারিখে কোনো কাজ নেই।</div>`;
@@ -161,13 +153,13 @@ function workCard(w, wl) {
   let h = `<div class="card" id="work-${w.id}">`;
   if (w.photo) h += `<img class="work-photo" src="${w.photo}">`;
   if (w.text) h += `<div class="note">📍 ${esc(w.text)}</div>`;
+  if (role === 'admin') h += moneyBox(w);
   if (w.voice) h += `<div class="voice-l">🔊 ভয়েস নোট</div><audio controls preload="metadata" src="${w.voice}"></audio>`;
   if (ds[N - 1] < date) h += `<div class="hint">এই কাজ আগের দিনের। আজও চললে নিচে "দিন যোগ করুন" চাপুন।</div>`;
   h += `<div class="sum">${N > 1 ? bn(N) + ' দিনে ' : ''}মোট মজুরি: ${bn(total)} টাকা · বাকি: <b style="color:var(--red)">${bn(unpaid)}</b> টাকা</div>`;
   if (!wl.length) h += `<div class="empty">আগে অ্যাডমিন প্যানেল থেকে লেবার যোগ করুন।</div>`;
   ds.forEach((d, i) => { h += daySection(w, wl, i + 1, d, N); });
   h += `<button class="btn add" data-act="addDay" data-w="${w.id}">➕ দিন ${bn(N + 1)} যোগ করুন</button>`;
-  if (role === 'admin') h += acctPanel(w);
   if (role === 'admin') h += `<div style="text-align:right;margin-top:10px"><button class="btn danger sm" data-act="delWork" data-w="${w.id}">এই কাজ মুছুন</button></div>`;
   return h + '</div>';
 }
@@ -258,69 +250,35 @@ function viewDues() {
   return top + h;
 }
 
-/* ---------- কাজের হিসাব (শুধু অ্যাডমিন) ---------- */
-function wagesOf(w) {
-  let total = 0, paid = 0;
-  Object.values(DB.data.atts).forEach(a => { if (a.workId === w.id && num(a.amount) > 0) { total += num(a.amount); paid += paidOf(a); } });
-  return { total, paid };
-}
-function acct(w) {
-  const price = num(w.price), recv = sumBy(w.recv, x => x.amt), exp = sumBy(w.exp, x => x.amt);
-  const wg = wagesOf(w), expTotal = exp + wg.total;
-  return { price, recv, receivable: price - recv, exp, wg, expTotal, profit: price - expTotal };
-}
-const profitTxt = ac => !ac.price ? 'দাম দেওয়া হয়নি' : (ac.profit >= 0 ? `লাভ ${bn(ac.profit)} টাকা` : `লস ${bn(-ac.profit)} টাকা`);
-const profitCls = ac => !ac.price ? 'muted' : (ac.profit >= 0 ? 'ok' : 'neg');
-
-function acctPanel(w) {
-  const ac = acct(w), open = !!accOpen[w.id];
-  let h = `<div class="acc"><button class="acc-h" data-act="toggleAcc" data-w="${w.id}">
-    <span>${open ? '▾' : '▸'} 💼 কাজের হিসাব <small>(শুধু অ্যাডমিন)</small></span><b class="${profitCls(ac)}">${profitTxt(ac)}</b></button>`;
-  if (!open) return h + '</div>';
-  h += `<div class="acc-b">
-    <div class="ar"><span>কাজের দাম (কত টাকায় ধরেছি)</span><b>${ac.price ? bn(ac.price) + ' টাকা' : '—'}</b></div>
-    <button class="btn sm" data-act="priceModal" data-w="${w.id}">✏️ দাম ${ac.price ? 'বদলান' : 'লিখুন'}</button>
-
-    <div class="ar sep"><span>কাস্টমারের থেকে পাওয়া</span><b class="ok">${bn(ac.recv)} টাকা</b></div>`;
-  (w.recv || []).forEach(x => {
-    h += `<div class="ent"><span>${fmtDate(ymd(x.at))}${x.note ? ' · ' + esc(x.note) : ''}</span><b>${bn(num(x.amt))}</b><button class="x" data-act="delEntry" data-w="${w.id}" data-t="recv" data-e="${x.id}">✖</button></div>`;
-  });
-  h += `<button class="btn sm" data-act="entryModal" data-w="${w.id}" data-t="recv">➕ টাকা পেলাম</button>`;
-  if (ac.price) h += `<div class="ar"><span>কাস্টমারের কাছে এখনো পাওনা</span><b class="${ac.receivable > 0 ? 'neg' : 'ok'}">${bn(ac.receivable)} টাকা</b></div>`;
-
-  h += `<div class="ar sep"><span>খরচ</span><b>${bn(ac.exp)} টাকা</b></div>`;
-  (w.exp || []).forEach(x => {
-    const c = catOf(x.cat);
-    h += `<div class="ent"><span>${c.i} ${c.l}${x.note ? ' · ' + esc(x.note) : ''}</span><b>${bn(num(x.amt))}</b><button class="x" data-act="delEntry" data-w="${w.id}" data-t="exp" data-e="${x.id}">✖</button></div>`;
-  });
-  h += `<button class="btn sm" data-act="entryModal" data-w="${w.id}" data-t="exp">➕ খরচ যোগ করুন</button>
-    <div class="ar"><span>👷 লেবারের মজুরি <small>(হাজিরি থেকে নিজে থেকে)</small></span><b>${bn(ac.wg.total)} টাকা</b></div>
-    <div class="ar"><span>মোট খরচ</span><b>${bn(ac.expTotal)} টাকা</b></div>`;
-  if (ac.price) {
-    const pct = Math.round(ac.expTotal / ac.price * 100);
-    h += `<div class="pbar"><i class="${pct > 100 ? 'over' : ''}" style="width:${Math.min(100, pct)}%"></i></div><small class="muted">বাজেটের ${bn(pct)}% খরচ হয়েছে</small>
-      <div class="profit ${ac.profit >= 0 ? 'ok' : 'neg'}">${ac.profit >= 0 ? 'নিজের লাভ' : 'লস'}: ${bn(Math.abs(ac.profit))} টাকা</div>`;
-  } else h += `<div class="hint">কাজের দাম লিখলে লাভ-লস দেখাবে।</div>`;
-  return h + '</div></div>';
+/* ---------- কাজের দাম ও পাওয়া টাকা (শুধু অ্যাডমিন) ---------- */
+const gotOf = w => w.got != null ? num(w.got) : sumBy(w.recv, x => x.amt);
+function moneyBox(w) {
+  const price = num(w.price), got = gotOf(w);
+  if (!price && !got) return `<button class="btn sm" data-act="moneyModal" data-w="${w.id}">💰 কত টাকায় ধরেছি / কত পেলাম লিখুন</button>`;
+  const left = price - got;
+  return `<div class="money">
+    <div class="m-r"><span>💰 কত টাকায় ধরেছি</span><b>${price ? bn(price) + ' টাকা' : '—'}</b></div>
+    <div class="m-r"><span>✅ কাস্টমার দিয়েছে</span><b class="ok">${bn(got)} টাকা</b></div>
+    ${price ? `<div class="m-r"><span>বাকি পাওনা</span><b class="${left > 0 ? 'neg' : 'ok'}">${left > 0 ? bn(left) + ' টাকা' : '✓ সব পেয়েছি'}</b></div>` : ''}
+    <div style="text-align:right"><button class="btn sm" data-act="moneyModal" data-w="${w.id}">✏️ এডিট</button></div></div>`;
 }
 
 function viewAcct() {
   const works = Object.values(DB.data.works).sort((a, b) => b.created - a.created);
   if (!works.length) return '<div class="empty">এখনো কোনো কাজ নেই।</div>';
-  let price = 0, recv = 0, exp = 0;
-  const rows = works.map(w => { const ac = acct(w); price += ac.price; recv += ac.recv; exp += ac.expTotal; return { w, ac }; });
-  const profit = price - exp;
+  let price = 0, got = 0;
+  works.forEach(w => { price += num(w.price); got += gotOf(w); });
+  const left = price - got;
   let h = `<div class="card"><h2>সব কাজের হিসাব</h2>
     <div class="ar"><span>কাজের মোট দাম</span><b>${bn(price)} টাকা</b></div>
-    <div class="ar"><span>কাস্টমারের থেকে পাওয়া</span><b class="ok">${bn(recv)} টাকা</b></div>
-    <div class="ar"><span>মোট খরচ (মজুরি সহ)</span><b>${bn(exp)} টাকা</b></div>
-    <div class="profit ${profit >= 0 ? 'ok' : 'neg'}">${profit >= 0 ? 'মোট লাভ' : 'মোট লস'}: ${bn(Math.abs(profit))} টাকা</div></div>
+    <div class="ar"><span>কাস্টমারের থেকে পাওয়া</span><b class="ok">${bn(got)} টাকা</b></div>
+    <div class="ar sep"><span>বাকি পাওনা</span><b class="${left > 0 ? 'neg' : 'ok'}">${bn(Math.max(0, left))} টাকা</b></div></div>
     <div class="card"><h2>কাজ অনুযায়ী</h2><div class="dlist">`;
-  rows.forEach(({ w, ac }) => {
-    const ds = workDates(w);
-    h += `<button class="due-row" data-act="openWork" data-w="${w.id}" data-n="${ds.length}" data-acc="1">
-      ${thumb(w)}<span class="dr-t"><b>${esc(workName(w))}</b><small>${fmtDate(ds[0])}${ds.length > 1 ? ' থেকে ' + bn(ds.length) + ' দিন' : ''} · দাম ${ac.price ? bn(ac.price) : '—'}</small></span>
-      <span class="dr-a"><b class="${profitCls(ac)}" style="font-size:13px">${profitTxt(ac)}</b></span><span class="dr-go">›</span></button>`;
+  works.forEach(w => {
+    const ds = workDates(w), p = num(w.price), g = gotOf(w);
+    h += `<button class="due-row" data-act="openWork" data-w="${w.id}" data-n="${ds.length}">
+      ${thumb(w)}<span class="dr-t"><b>${esc(workName(w))}</b><small>${fmtDate(ds[0])} · দাম ${p ? bn(p) : '—'} · পেয়েছি ${bn(g)}</small></span>
+      <span class="dr-a"><b class="${p - g > 0 ? 'neg' : 'ok'}" style="font-size:14px">${p ? (p - g > 0 ? bn(p - g) + ' বাকি' : '✓') : ''}</b></span><span class="dr-go">›</span></button>`;
   });
   return h + '</div></div>';
 }
@@ -377,6 +335,7 @@ function workModal() {
     ${photoBtns('wPhoto')}
     <label>২. জায়গার বিবরণ (লিখে)</label>
     <textarea id="wText" placeholder="যেমন: রহিম সাহেবের বাড়ি, মেইন রোডের পাশে">${esc(tmp.text || '')}</textarea>
+    ${role === 'admin' ? moneyFields(tmp.price, tmp.got) : ''}
     <label>৩. অথবা ভয়েস নোট</label>
     ${tmp.voice ? `<audio controls preload="metadata" src="${tmp.voice}"></audio>` : ''}
     <div class="row wrap">
@@ -397,6 +356,7 @@ function workModal() {
     </div>`);
   bindPhoto('wPhoto', 800, 0.6, workModal);
   $('#wText').oninput = e => { tmp.text = e.target.value; };
+  if ($('#mPrice')) { $('#mPrice').oninput = e => { tmp.price = e.target.value; }; $('#mGot').oninput = e => { tmp.got = e.target.value; }; }
   $('#recBtn').onclick = toggleRec;
   if ($('#recDel')) $('#recDel').onclick = () => { tmp.voice = null; tmp.err = ''; workModal(); };
   ['wAudRec', 'wAudFile'].forEach(i => {
@@ -547,25 +507,20 @@ function workerPayModal(kid) {
   $('#wpAmt').oninput = upd; upd();
 }
 
-/* ---- কাজের হিসাবের মডাল ---- */
-function priceModal(wid) {
-  const w = DB.data.works[wid];
-  tmp = { pw: wid };
-  openModal(`<h3>কাজের দাম</h3>
-    <div class="hint">${esc(workName(w))}</div>
-    <label>কত টাকায় কাজটা ধরেছেন?</label>
-    <input type="number" inputmode="numeric" id="prAmt" value="${num(w.price) || ''}" placeholder="যেমন: ২০০০০">
-    <div class="row" style="margin-top:16px">${closeBtn()}<button class="btn primary" data-act="priceSave" style="flex:2">সেভ করুন</button></div>`);
+/* ---- দাম ও পাওয়া টাকার মডাল ---- */
+function moneyFields(price, got) {
+  return `<label>💰 কত টাকায় কাজটা ধরেছেন?</label>
+    <input type="number" inputmode="numeric" id="mPrice" value="${price || ''}" placeholder="যেমন: ২০০০০">
+    <label>✅ কাস্টমার এ পর্যন্ত কত টাকা দিয়েছে?</label>
+    <input type="number" inputmode="numeric" id="mGot" value="${got || ''}" placeholder="যেমন: ৫০০০ (না দিলে ফাঁকা)">`;
 }
-function entryModal(wid, type) {
+function moneyModal(wid) {
   const w = DB.data.works[wid];
-  tmp = { ew: wid, et: type };
-  openModal(`<h3>${type === 'exp' ? 'খরচ যোগ করুন' : 'কাস্টমারের থেকে টাকা পেলাম'}</h3>
+  tmp = { mw: wid };
+  openModal(`<h3>দাম ও পাওয়া টাকা</h3>
     <div class="hint">${esc(workName(w))}</div>
-    ${type === 'exp' ? `<label>কীসের খরচ</label><select id="eCat">${CATS.map(c => `<option value="${c.k}">${c.i} ${c.l}</option>`).join('')}</select>` : ''}
-    <label>কত টাকা</label><input type="number" inputmode="numeric" id="eAmt">
-    <label>বিবরণ (ইচ্ছা হলে)</label><input type="text" id="eNote" placeholder="${type === 'exp' ? 'যেমন: ৩০ ফুট পাইপ, ফিল্টার' : 'যেমন: অগ্রিম / শেষ পেমেন্ট'}">
-    <div class="row" style="margin-top:16px">${closeBtn()}<button class="btn primary" data-act="entrySave" style="flex:2">সেভ করুন</button></div>`);
+    ${moneyFields(num(w.price), gotOf(w))}
+    <div class="row" style="margin-top:16px">${closeBtn()}<button class="btn primary" data-act="moneySave" style="flex:2">সেভ করুন</button></div>`);
 }
 
 /* ---------- ক্লিক হ্যান্ডলার ---------- */
@@ -591,7 +546,7 @@ function handle(b) {
     if (tmp.recording) { toast('আগে রেকর্ড থামান'); return; }
     if (!tmp.photo && !tmp.text && !tmp.voice) { toast('ছবি, লেখা বা ভয়েস নোট দিন'); return; }
     if ((tmp.photo || '').length + (tmp.voice || '').length + (tmp.text || '').length > 900000) { toast('ছবি + ভয়েস মিলিয়ে বেশি বড়। ছোট ভয়েস দিন।'); return; }
-    DB.set('works', uid(), { date, dates: [date], photo: tmp.photo || null, text: (tmp.text || '').trim(), voice: tmp.voice || null, created: Date.now() });
+    DB.set('works', uid(), { date, dates: [date], photo: tmp.photo || null, text: (tmp.text || '').trim(), voice: tmp.voice || null, created: Date.now(), price: num(tmp.price), got: num(tmp.got) });
     closeModal(); toast('কাজ যোগ হয়েছে');
   }
   else if (act === 'delWork') {
@@ -604,7 +559,6 @@ function handle(b) {
     const ds = workDates(wk);
     tab = 'hajiri'; date = ds[N - 1] || ds[0];
     dayOpen[w + '_' + N] = true;
-    if (b.dataset.acc) accOpen[w] = true;
     render(); focusWork(w);
   }
   else if (act === 'addDay') {
@@ -629,7 +583,6 @@ function handle(b) {
     const cur = dk in dayOpen ? dayOpen[dk] : N === total;
     dayOpen[dk] = !cur; render();
   }
-  else if (act === 'toggleAcc') { accOpen[w] = !accOpen[w]; render(); }
   else if (act === 'pres') DB.set('atts', key, { workId: w, day: N, workerId: k, status: 'present', amount: 0, paid: false, paidAmt: 0 });
   else if (act === 'abs') DB.set('atts', key, { workId: w, day: N, workerId: k, status: 'absent', amount: 0, paid: false, paidAmt: 0 });
   else if (act === 'pick') {
@@ -659,26 +612,10 @@ function handle(b) {
     allocate(dueList(tmp.payK), v).forEach(({ x, p }) => payOne(x.id, p));
     closeModal(); toast(`${bn(v)} টাকা দেওয়া হয়েছে`);
   }
-  else if (act === 'priceModal') priceModal(w);
-  else if (act === 'priceSave') {
-    DB.set('works', tmp.pw, { price: num($('#prAmt').value) });
-    accOpen[tmp.pw] = true; closeModal(); toast('দাম সেভ হয়েছে');
-  }
-  else if (act === 'entryModal') entryModal(w, t);
-  else if (act === 'entrySave') {
-    const amt = num($('#eAmt').value);
-    if (amt <= 0) { toast('টাকার অঙ্ক লিখুন'); return; }
-    const wk = DB.data.works[tmp.ew], type = tmp.et;
-    const item = { id: uid(), amt, note: $('#eNote').value.trim(), at: Date.now() };
-    if (type === 'exp') item.cat = $('#eCat').value;
-    const arr = (wk[type] || []).concat([item]);
-    DB.set('works', tmp.ew, type === 'exp' ? { exp: arr } : { recv: arr });
-    accOpen[tmp.ew] = true; closeModal(); toast('সেভ হয়েছে');
-  }
-  else if (act === 'delEntry') {
-    if (!confirm('এই এন্ট্রি মুছবেন?')) return;
-    const wk = DB.data.works[w], arr = (wk[t] || []).filter(x => x.id !== eid);
-    DB.set('works', w, t === 'exp' ? { exp: arr } : { recv: arr });
+  else if (act === 'moneyModal') moneyModal(w);
+  else if (act === 'moneySave') {
+    DB.set('works', tmp.mw, { price: num($('#mPrice').value), got: num($('#mGot').value) });
+    closeModal(); toast('সেভ হয়েছে');
   }
   else if (act === 'saveRates') {
     DB.set('settings', 'main', { half: Number($('#rHalf').value) || 0, full: Number($('#rFull').value) || 0, double: Number($('#rDouble').value) || 0 });
